@@ -10,6 +10,8 @@ use pocketmine\event\player\PlayerMoveEvent;
 use pocketmine\event\player\PlayerInteractEvent;
 use pocketmine\event\player\PlayerChatEvent;
 use pocketmine\event\block\BlockBreakEvent;
+use pocketmine\event\player\PlayerCommandPreprocessEvent;
+use pocketmine\event\server\ServerCommandEvent;
 
 use pocketmine\Player;
 
@@ -104,5 +106,25 @@ class BridgeBlacklist extends PluginBase implements Listener{
     	if(isset($this->pendingBlacklistCheck[$name])){
     		$event->setCancelled();
     	}
+	}
+	
+	public function onPlayerCommand(PlayerCommandPreprocessEvent $event){
+        $msg = strtolower($event->getMessage());
+		$p = $event->getPlayer();
+		$cmd = explode(" ", $msg);
+		if($cmd[0] === 'ban' || $cmd[0] === 'ban-ip'){
+			$event->setCancelled();
+			$p->sendMessage(TextFormat::RED . 'The ban commands can\' be used while BridgeBlacklist is enabled.');
+		}
+	}
+	
+	public function onServerCommand(ServerCommandEvent $event){
+        $msg = strtolower($event->getCommand());
+		$console = $event->getSender();
+		$cmd = explode(" ", $msg);
+		if($cmd[0] === 'ban' || $cmd[0] === 'ban-ip'){
+			$event->setCancelled();
+			$console->sendMessage(TextFormat::RED . 'The ban commands can\' be used while BridgeBlacklist is enabled.');
+		}
 	}
 }
