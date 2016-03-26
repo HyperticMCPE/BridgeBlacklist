@@ -15,7 +15,7 @@ class BlacklistCheckTask extends AsyncTask{
     public function __construct($name, $ip, $api_url){
         $this->name = $name;
         $this->ip = $ip;
-		$this->api_url = $api_url;
+	$this->api_url = $api_url;
     }
 
     /**
@@ -24,12 +24,13 @@ class BlacklistCheckTask extends AsyncTask{
      * @return void
      */
     public function onRun(){
-		$data = json_decode(Utils::getURL($this->api_url . '?player=' . $this->name . '&ip=' . $this->ip), true);
-		$this->setResult($data);
+	$data = json_decode(Utils::getURL($this->api_url . '?player=' . $this->name . '&ip=' . $this->ip), true);
+	$this->setResult($data);
     }
 
     public function onCompletion(Server $server){
         $plugin = $server->getPluginManager()->getPlugin("BridgeBlacklist");
+        
         if($plugin instanceof BridgeBlacklist && $plugin->isEnabled()){
             $plugin->blacklistCheckComplete($this->name, $this->ip, $this->getResult());
         }
