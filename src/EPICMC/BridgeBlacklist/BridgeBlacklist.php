@@ -38,7 +38,7 @@ class BridgeBlacklist extends PluginBase implements Listener{
 		]);
         $this->getServer()->getPluginManager()->registerEvents($this, $this);
         $this->pendingBlacklistCheck = [];
-		$this->api_url = $this->getConfig()->get('api-url');
+		$this->api_url = $this->setting->get('api-url');
 	}
 	
     public function onPlayerPreLogin(PlayerPreLoginEvent $event){
