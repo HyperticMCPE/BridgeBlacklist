@@ -49,7 +49,6 @@ class BridgeBlacklist extends PluginBase implements Listener{
     }
 
     public function blacklistCheckComplete($name, $ip, $result){
-		echo 'YES' . PHP_EOL;
         if(isset($this->pendingBlacklistCheck[$name])){
             $player = $this->pendingBlacklistCheck[$name];
             $player_blacklist = $result['player'];
