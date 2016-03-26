@@ -2,13 +2,15 @@
 
 namespace EPICMC\BridgeBlacklist;
 
-use EPICMC\BridgeBlacklist\task\BlacklistCheckTask;
+use EPICMC\BridgeBlacklist\task\BanCheckTask;
 
 use pocketmine\event\Listener;
 use pocketmine\event\player\PlayerPreLoginEvent;
 use pocketmine\event\player\PlayerMoveEvent;
 use pocketmine\event\player\PlayerInteractEvent;
 use pocketmine\event\player\PlayerChatEvent;
+use pocketmine\event\player\PlayerCommandPreprocessEvent;
+use pocketmine\event\server\ServerCommandEvent;
 use pocketmine\event\block\BlockBreakEvent;
 
 use pocketmine\Player;
@@ -21,47 +23,46 @@ use pocketmine\utils\Config;
 class BridgeBlacklist extends PluginBase implements Listener{
 
     /** @var Player[] */
-    protected $pendingBlacklistCheck;
+    protected $pendingBanCheck;
     protected $api_url;
 		
-	const NOT_BLACKLISTED = 0;
-    const PLAYER_BLACKLISTED = 1;
-    const IP_BLACKLISTED = 2;
-    const BOTH_BLACKLISTED = 3;
+	const NOT_BANNED = 0;
+    const NAME_BANNED = 1;
+    const IP_BANNED = 2;
+    const BOTH_BANNED = 3;
 
     public function onEnable(){
 		@mkdir($this->getDataFolder());
         $this->setting = new Config($this->getDataFolder() . "config.yml", Config::YAML, [
-			'api-url' => "yoururl/blacklist.php"
+			'api-url' => "https://bridge.epicmc.me/blacklist"
 		]);
         $this->getServer()->getPluginManager()->registerEvents($this, $this);
-        $this->pendingBlacklistCheck = [];
+        $this->pendingBanCheck = [];
 		$this->api_url = $this->getConfig()->get('api-url');
 	}
 	
     public function onPlayerPreLogin(PlayerPreLoginEvent $event){
 		$player = $event->getPlayer();
-        $this->pendingBlacklistCheck[$player->getName()] = $player;
-        $task = new BlacklistCheckTask($player->getName(), $player->getAddress(), $this->api_url);
+        $this->pendingBanCheck[$player->getName()] = $player;
+        $task = new BanCheckTask($player->getName(), $player->getAddress(), $this->api_url);
         $this->getServer()->getScheduler()->scheduleAsyncTask($task);
     }
 
-    public function blacklistCheckComplete($name, $ip, $result){
-		echo 'YES' . PHP_EOL;
-        if(isset($this->pendingBlacklistCheck[$name])){
-            $player = $this->pendingBlacklistCheck[$name];
-            $player_blacklist = $result['player'];
-			$ip_blacklist = $result['ip'];
-			unset($this->pendingBlacklistCheck[$player->getName()]);
-			if($player_blacklist === true){
-				if($ip_blacklist === false){
-					$player->close('', "This username is blacklisted!");
+    public function banCheckComplete($name, $ip, $result){
+        if(isset($this->pendingBanCheck[$name])){
+            $player = $this->pendingBanCheck[$name];
+            $name_ban = $result['player'];
+			$ip_ban = $result['ip'];
+			unset($this->pendingBanCheck[$player->getName()]);
+			if($name_ban === true){
+				if($ip_ban === false){
+					$player->close('', "This username is banned!");
 				}else{
-					$player->close('', "This username and IP address are blacklisted!");
+					$player->close('', "This username and IP address are banned!");
 				}
 			}else{
-				if($ip_blacklist === true){
-					$player->close('', "This IP address is blacklisted!");
+				if($ip_ban === true){
+					$player->close('', "This IP address is banned!");
 				}
 			}
         }else{
@@ -71,20 +72,20 @@ class BridgeBlacklist extends PluginBase implements Listener{
 	
 	public function onMove(PlayerMoveEvent $event){
 		$name = $event->getPlayer()->getName();
-		if(isset($this->pendingBlacklistCheck[$name])){
+		if(isset($this->pendingBanCheck[$name])){
 			$event->setCancelled();
 		}
 	}
 	
 	public function onPlayerChat(PlayerChatEvent $event){
 		$pname = $event->getPlayer()->getName();
-    	if(isset($this->pendingBlacklistCheck[$pname])){
+    	if(isset($this->pendingBanCheck[$pname])){
     		$event->setCancelled();
     	}
     	$recipients = $event->getRecipients();
     	foreach($recipients as $key => $recipient){
     		if($recipient instanceof Player){
-    			if(isset($this->pendingBlacklistCheck[$recipient->getName()])){
+    			if(isset($this->pendingBanCheck[$recipient->getName()])){
     				unset($recipients[$key]);
     			}
     		}
@@ -94,15 +95,35 @@ class BridgeBlacklist extends PluginBase implements Listener{
 	
 	public function onInteract(PlayerInteractEvent $event){
 		$name = $event->getPlayer()->getName();
-    	if(isset($this->pendingBlacklistCheck[$name])){
+    	if(isset($this->pendingBanCheck[$name])){
     		$event->setCancelled();
     	}
     }
 	
 	public function onBreak(BlockBreakEvent $event){
 		$name = $event->getPlayer()->getName();
-    	if(isset($this->pendingBlacklistCheck[$name])){
+    	if(isset($this->pendingBanCheck[$name])){
     		$event->setCancelled();
     	}
+	}
+	
+	public function onPlayerCommand(PlayerCommandPreprocessEvent $event){
+        $msg = strtolower($event->getMessage());
+		$p = $event->getPlayer();
+		$cmd = explode(" ", $msg);
+		if($cmd[0] === 'ban' || $cmd[0] === 'ban-ip'){
+			$event->setCancelled();
+			$p->sendMessage(TextFormat::RED . 'The ban commands can\' be used while BridgeBlacklist is enabled.');
+		}
+	}
+	
+	public function onServerCommand(ServerCommandEvent $event){
+        $msg = strtolower($event->getCommand());
+		$console = $event->getSender();
+		$cmd = explode(" ", $msg);
+		if($cmd[0] === 'ban' || $cmd[0] === 'ban-ip'){
+			$event->setCancelled();
+			$console->sendMessage(TextFormat::RED . 'The ban commands can\' be used while BridgeBlacklist is enabled.');
+		}
 	}
 }
